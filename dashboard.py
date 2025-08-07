@@ -454,7 +454,7 @@ else:
         month_labels = create_month_labels(recent_13_months)
 
         # 🚗 2-1 xEV 판매량 추이 (누적막대)
-        st.subheader("🚗 xEV 판매량 추이 (Top 10 + Others)")
+        st.subheader("🚗 xEV 판매량 추이")
         xev_type_hist_full = filtered_df.groupby("Type_2")[recent_13_months].sum()
         totals_by_type = xev_type_hist_full.sum(axis=1)
         top10_types = totals_by_type.nlargest(10).index
@@ -469,22 +469,16 @@ else:
         st.plotly_chart(fig_xev_hist, use_container_width=True)
 
         # 🏢 2-2 OEM별 판매량 추이 (꺾은선)
-        st.subheader("🏢 OEM별 판매량 추이 (Top 10 + Others)")
+        st.subheader("🏢 OEM별 판매량 추이 (Top 10)")
         oem_hist_full = filtered_df.groupby("AutoGroup")[recent_13_months].sum()
         totals_by_oem = oem_hist_full.sum(axis=1)
         top10_oems = totals_by_oem.nlargest(10).index
         oem_hist = oem_hist_full.loc[top10_oems]
         others_sum = oem_hist_full.loc[~oem_hist_full.index.isin(top10_oems)].sum()
         if others_sum.sum() > 0:
-            oem_hist.loc["Others"] = others_sum
-        oem_hist = oem_hist.T
-        oem_hist.index = month_labels
-        fig_oem_hist = px.line(oem_hist, x=oem_hist.index, y=oem_hist.columns, markers=True)
-        fig_oem_hist.update_traces(hovertemplate="%{y:,}")
-        st.plotly_chart(fig_oem_hist, use_container_width=True)
-
+          
         # 🌍 2-3 지역별 판매량 추이 (꺾은선)
-        st.subheader("🌍 지역별 판매량 추이 (Top 10 + Others)")
+        st.subheader("🌍 지역별 판매량 추이")
         region_hist_full = filtered_df.groupby("Region")[recent_13_months].sum()
         totals_by_region = region_hist_full.sum(axis=1)
         top10_regions = totals_by_region.nlargest(10).index
@@ -686,3 +680,4 @@ st.markdown("""
     🚗 EV Market Intelligence Dashboard | Powered by Streamlit & Gemini AI
 </div>
 """, unsafe_allow_html=True)
+
