@@ -527,30 +527,31 @@ else:
         if gemini_client and monthly_cols:
             st.info(f"기준월 **{selected_base_month}** 기준 최근 M-13개월 데이터를 Gemini AI가 분석합니다.")
             
-            # 피벗 테이블 생성 및 0값만 있는 행 제거
-            # M-13개월 전체를 분석에 사용하도록 변경
-            if not filtered_df.empty:
-                analysis_df_pivot = filtered_df.groupby(['AutoGroup', 'Model', 'Battery Supplier', 'Type_2'])[recent_13_months].sum().reset_index()
-                analysis_df_pivot = analysis_df_pivot[(analysis_df_pivot[recent_13_months].sum(axis=1) > 0)]
-            else:
-                analysis_df_pivot = pd.DataFrame()
+            # M-13개월 전체 기간의 판매량 합계가 0인 행만 제거
+            analysis_df = filtered_df.copy()
+            if not analysis_df.empty:
+                analysis_df = analysis_df[(analysis_df[recent_13_months].sum(axis=1) > 0)]
+            
+            # 분석에 필요한 컬럼만 선택하여 Gemini에 전달 (모든 월, 주요 카테고리)
+            columns_to_analyze = ['AutoGroup', 'Model', 'Battery Supplier', 'Type_2', 'Region'] + recent_13_months
+            analysis_df = analysis_df[columns_to_analyze]
 
-            if not analysis_df_pivot.empty and len(recent_13_months) > 1:
-                st.subheader("📋 분석 데이터 미리보기 (피벗테이블)")
-                st.write(f"레코드: **{len(analysis_df_pivot)}개**, 기간: **{len(recent_13_months)}개월**")
+            if not analysis_df.empty and len(recent_13_months) > 1:
+                st.subheader("📋 분석 데이터 미리보기 (일부)")
+                st.write(f"레코드: **{len(analysis_df)}개**, 기간: **{len(recent_13_months)}개월**")
                 st.write("분석 기간 열:", ', '.join(recent_13_months))
                 with st.expander("데이터 보기", expanded=False):
-                    st.dataframe(analysis_df_pivot.head(10))
+                    st.dataframe(analysis_df.head(10))
 
                 if st.button("🔍 Gemini AI 분석 실행", type="primary"):
                     try:
                         with st.spinner("Gemini AI 분석 중..."):
-                            csv_data = analysis_df_pivot.to_csv(index=False)
+                            csv_data = analysis_df.to_csv(index=False)
                             
                             gemini_prompt = f"""
     당신은 EV(전기차)/배터리 부문 10년차 Market Intelligence 전문가입니다.
-    다음 CSV 데이터는 기준월 {selected_base_month} 포함 최근 13개월간의 판매 데이터입니다.
-    이 데이터는 OEM, 모델, 배터리 공급사, xEV 타입별로 집계된 요약 정보입니다.
+    다음 CSV 데이터는 기준월 {selected_base_month} 포함 최근 13개월간의 상세 판매 데이터입니다.
+    이 데이터는 OEM, 모델, 배터리 공급사, xEV 타입, 지역별로 기록된 월별 판매량 정보입니다.
 
     **분석 목표:**
     1.  **시장 동향 분석:**
@@ -646,7 +647,8 @@ else:
             st.info("선택된 검색 조건과 관련된 최신 뉴스를 검색합니다.")
 
             # 선택된 키워드별 뉴스 표시 (제목만 출력)
-            for keyword in selected_keywords[:5]:  # 처음 5개 키워드로 제한
+            # 키워드 한도를 10개로 늘림
+            for keyword in selected_keywords[:10]:
                 with st.expander(f"🔍 '{keyword}' 관련 뉴스", expanded=False):
                     news_results = fetch_google_news(keyword, serp_api_key)
 
