@@ -95,7 +95,6 @@ gemini_client = None
 if gemini_api_key and GEMINI_AVAILABLE:
     try:
         genai.configure(api_key=gemini_api_key)
-        # gemini-pro 모델을 gemini-1.5-flash로 변경
         gemini_client = genai.GenerativeModel("gemini-1.5-flash")
         st.sidebar.success("✅ Gemini API 연결 성공")
     except Exception as e:
@@ -526,36 +525,20 @@ else:
         st.header("🤖 AI Assistant (Gemini)")
 
         if gemini_client and monthly_cols:
-            st.info(f"기준월 **{selected_base_month}** 기준 최근 6개월 및 전년 동월 데이터를 Gemini AI가 분석합니다.")
-
-            # Gemini 분석을 위한 데이터 범위 재설정 (최근 6개월 + 전년 동월)
-            base_month_dt = pd.to_datetime(selected_base_month, format="%b-%y")
+            st.info(f"기준월 **{selected_base_month}** 기준 최근 M-13개월 데이터를 Gemini AI가 분석합니다.")
             
-            # 최근 6개월
-            end_idx = sorted_months.index(base_month_dt)
-            start_idx_6m = max(0, end_idx - 5)
-            recent_6_months_dt = sorted_months[start_idx_6m:end_idx + 1]
-
-            # 전년 동월
-            last_year_dt = base_month_dt - pd.DateOffset(years=1)
-            last_year_col = month_map.get(last_year_dt)
-            
-            analysis_columns = []
-            analysis_columns.extend([month_map[m] for m in recent_6_months_dt])
-            if last_year_col and last_year_col not in analysis_columns:
-                analysis_columns.append(last_year_col)
-
             # 피벗 테이블 생성 및 0값만 있는 행 제거
+            # M-13개월 전체를 분석에 사용하도록 변경
             if not filtered_df.empty:
-                analysis_df_pivot = filtered_df.groupby(['AutoGroup', 'Model', 'Battery Supplier', 'Type_2'])[analysis_columns].sum().reset_index()
-                analysis_df_pivot = analysis_df_pivot[(analysis_df_pivot[analysis_columns].sum(axis=1) > 0)]
+                analysis_df_pivot = filtered_df.groupby(['AutoGroup', 'Model', 'Battery Supplier', 'Type_2'])[recent_13_months].sum().reset_index()
+                analysis_df_pivot = analysis_df_pivot[(analysis_df_pivot[recent_13_months].sum(axis=1) > 0)]
             else:
                 analysis_df_pivot = pd.DataFrame()
 
-            if not analysis_df_pivot.empty and len(analysis_columns) > 1:
+            if not analysis_df_pivot.empty and len(recent_13_months) > 1:
                 st.subheader("📋 분석 데이터 미리보기 (피벗테이블)")
-                st.write(f"레코드: **{len(analysis_df_pivot)}개**, 기간: **{len(analysis_columns)}개월**")
-                st.write("분석 기간 열:", ', '.join(analysis_columns))
+                st.write(f"레코드: **{len(analysis_df_pivot)}개**, 기간: **{len(recent_13_months)}개월**")
+                st.write("분석 기간 열:", ', '.join(recent_13_months))
                 with st.expander("데이터 보기", expanded=False):
                     st.dataframe(analysis_df_pivot.head(10))
 
@@ -566,18 +549,29 @@ else:
                             
                             gemini_prompt = f"""
     당신은 EV(전기차)/배터리 부문 10년차 Market Intelligence 전문가입니다.
-    다음 CSV 데이터는 기준월 {selected_base_month} 포함 최근 6개월 및 전년 동월 판매 데이터입니다.
+    다음 CSV 데이터는 기준월 {selected_base_month} 포함 최근 13개월간의 판매 데이터입니다.
     이 데이터는 OEM, 모델, 배터리 공급사, xEV 타입별로 집계된 요약 정보입니다.
+
+    **분석 목표:**
+    1.  **시장 동향 분석:**
+        -   최근 13개월간 전체 시장 판매량의 월별 추이를 구체적인 수치로 설명하세요.
+        -   가장 최근 월({selected_base_month})의 전월 대비(MoM) 및 전년 동월 대비(YoY) 판매량 변화를 정확한 성장률(%)과 함께 분석하세요.
+    2.  **OEM 및 모델 경쟁 분석:**
+        -   OEM별 시장 점유율 변화를 수치(%)로 제시하고, 주요 경쟁사의 성과를 비교 분석하세요.
+        -   가장 잘 팔린 상위 5개 모델의 판매량 추이를 분석하고, 이들의 성공 요인을 추정하세요.
+    3.  **배터리 및 xEV 타입 분석:**
+        -   배터리 공급사별 시장 점유율 변화를 분석하고, 어떤 공급사가 가장 빠르게 성장하고 있는지 수치를 들어 설명하세요.
+        -   BEV, PHEV, FHEV 등 xEV 타입별 판매량 추이를 비교하고, 각 타입의 특징적인 동향을 분석하세요.
+    4.  **전략적 시사점:**
+        -   위 분석 내용을 바탕으로 SKO가 시장에서 경쟁력을 확보하기 위한 핵심 전략적 시사점을 3가지 이상 제언하세요.
+
+    **분석 시 유의사항:**
+    -   반드시 데이터에 있는 수치를 근거로 분석을 수행하세요.
+    -   추상적인 표현 대신 구체적인 숫자(판매량, 성장률 등)를 사용하여 분석 결과를 제시하세요.
+    -   마치 실제 보고서를 작성하듯이 전문적이고 논리적인 구조로 작성하세요.
 
     CSV 데이터:
     {csv_data}
-
-    다음 내용을 분석하세요:
-    1. 시장 트렌드 분석 (YoY, MoM)
-    2. OEM별 점유율 및 경쟁 구도
-    3. xEV 타입별 성장세와 배터리 공급 현황
-    4. 지역별 시장 특성과 성장 요인
-    5. 전략적 시사점 및 리스크
     """
                             if gemini_prompt.strip():
                                 response = gemini_client.generate_content(gemini_prompt)
