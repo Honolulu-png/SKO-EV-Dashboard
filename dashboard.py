@@ -11,8 +11,7 @@ from datetime import datetime
 
 # Gemini API integration
 try:
-    from google import genai
-    from google.genai import types
+    from google import generativeai as genai
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
@@ -79,14 +78,14 @@ st.markdown("""
 # ========================
 st.sidebar.header("🔑 API Key 설정")
 gemini_api_key = st.sidebar.text_input(
-    "Google Gemini API Key", 
-    value="", 
+    "Google Gemini API Key",
+    value="",
     type="password",
     help="Gemini AI 분석을 위한 API 키를 입력하세요"
 )
 serp_api_key = st.sidebar.text_input(
-    "SerpAPI Key", 
-    value="", 
+    "SerpAPI Key",
+    value="",
     type="password",
     help="뉴스 검색을 위한 SerpAPI 키를 입력하세요"
 )
@@ -96,7 +95,7 @@ gemini_client = None
 if gemini_api_key and GEMINI_AVAILABLE:
     try:
         genai.configure(api_key=gemini_api_key)
-        gemini_client = genai.GenerativeModel("gemini-1.5-flash")
+        gemini_client = genai.GenerativeModel("gemini-pro")
         st.sidebar.success("✅ Gemini API 연결 성공")
     except Exception as e:
         st.sidebar.error(f"❌ Gemini API 연결 실패: {str(e)}")
@@ -124,7 +123,7 @@ def load_default_data():
 
 def load_uploaded_data():
     uploaded_file = st.sidebar.file_uploader(
-        "📂 CSV 데이터 업로드 (관리자 모드)", 
+        "📂 CSV 데이터 업로드 (관리자 모드)",
         type=['csv']
     )
     if uploaded_file:
@@ -175,7 +174,7 @@ def clean_numeric_data(df, monthly_cols):
 
 df = clean_numeric_data(df, monthly_cols)
 
-# 기준월: Jun-25 고정 (EVdashboard 방식)
+# 기준월: Jun-25 고정
 df_months = [pd.to_datetime(c.replace("(EV)", "").replace("\n", "").strip(), format="%b-%y") for c in monthly_cols]
 month_map = dict(zip(df_months, monthly_cols))
 fixed_month = pd.to_datetime("Jun-25", format="%b-%y")
@@ -248,10 +247,10 @@ if not st.session_state.search_performed:
     # Initial Search Screen
     # ========================
     st.header("🔍 검색 조건 설정")
-
+    
     with st.container():
         col1, col2 = st.columns(2)
-
+        
         with col1:
             selected_oems = st.multiselect(
                 "🏢 OEM (자동차 제조사)",
@@ -260,7 +259,7 @@ if not st.session_state.search_performed:
                 key="oems_select",
                 help="분석할 자동차 제조사를 선택하세요"
             )
-
+            
             selected_regions = st.multiselect(
                 "🌍 주요 시장",
                 ["전체"] + sorted(df["Region"].dropna().unique()),
@@ -268,7 +267,7 @@ if not st.session_state.search_performed:
                 key="regions_select",
                 help="분석할 지역을 선택하세요"
             )
-
+        
         with col2:
             selected_models = st.multiselect(
                 "🚗 차종",
@@ -277,7 +276,7 @@ if not st.session_state.search_performed:
                 key="models_select",
                 help="분석할 차량 모델을 선택하세요"
             )
-
+            
             selected_countries = st.multiselect(
                 "🏳️ 국가",
                 ["전체"] + sorted(df["Country"].dropna().unique()),
@@ -285,7 +284,7 @@ if not st.session_state.search_performed:
                 key="countries_select",
                 help="분석할 국가를 선택하세요"
             )
-
+    
     selected_xev_types = st.multiselect(
         "🔋 xEV Type (전기차 유형)",
         ["전체"] + sorted(df["Type_2"].dropna().unique()),
@@ -293,9 +292,9 @@ if not st.session_state.search_performed:
         key="xev_select",
         help="분석할 전기차 유형을 선택하세요 (BEV, PHEV, FHEV, MHEV)"
     )
-
+    
     st.markdown("---")
-
+    
     if st.button("🔍 검색하기", type="primary", key="search_button"):
         # Store search conditions in session state
         st.session_state.update({
@@ -313,7 +312,7 @@ else:
     # ========================
     # Search Results Screen
     # ========================
-
+    
     # Display current search conditions in sidebar
     st.sidebar.header("🔍 현재 검색 조건")
     st.sidebar.write(f"**기준월**: {st.session_state.get('selected_base_month', selected_base_month)}")
@@ -322,29 +321,29 @@ else:
     st.sidebar.write(f"**모델**: {', '.join(st.session_state['selected_models'])}")
     st.sidebar.write(f"**국가**: {', '.join(st.session_state['selected_countries'])}")
     st.sidebar.write(f"**xEV타입**: {', '.join(st.session_state['selected_xev_types'])}")
-
+    
     if st.sidebar.button("🔄 새로운 검색", key="reset_button"):
         st.session_state.search_performed = False
         st.rerun()
-
+    
     # Apply filters to dataframe
     filtered_df = df.copy()
-
+    
     if "전체" not in st.session_state["selected_oems"]:
         filtered_df = filtered_df[filtered_df["AutoGroup"].isin(st.session_state["selected_oems"])]
-
+    
     if "전체" not in st.session_state["selected_regions"]:
         filtered_df = filtered_df[filtered_df["Region"].isin(st.session_state["selected_regions"])]
-
+    
     if "전체" not in st.session_state["selected_models"]:
         filtered_df = filtered_df[filtered_df["Model"].isin(st.session_state["selected_models"])]
-
+    
     if "전체" not in st.session_state["selected_countries"]:
         filtered_df = filtered_df[filtered_df["Country"].isin(st.session_state["selected_countries"])]
-
+    
     if "전체" not in st.session_state["selected_xev_types"]:
         filtered_df = filtered_df[filtered_df["Type_2"].isin(st.session_state["selected_xev_types"])]
-
+    
     # Generate keywords for news search
     selected_keywords = []
     for group in [
@@ -357,10 +356,10 @@ else:
         for item in group:
             if item != "전체":
                 selected_keywords.append(item)
-
+    
     if not selected_keywords or "전체" in str(selected_keywords):
         selected_keywords = ["EV battery", "electric vehicle", "전기차"]
-
+    
     # ========================
     # Tab Navigation
     # ========================
@@ -370,7 +369,7 @@ else:
         "🤖 AI Assistant (Gemini)",
         "📰 관련 뉴스 (Google News)"
     ])
-
+    
     # ========================
     # Tab 1: Base Month Data Analysis
     # ========================
@@ -454,7 +453,7 @@ else:
         month_labels = create_month_labels(recent_13_months)
 
         # 🚗 2-1 xEV 판매량 추이 (누적막대)
-        st.subheader("🚗 xEV 판매량 추이")
+        st.subheader("🚗 xEV 판매량 추이 (Top 10 + Others)")
         xev_type_hist_full = filtered_df.groupby("Type_2")[recent_13_months].sum()
         totals_by_type = xev_type_hist_full.sum(axis=1)
         top10_types = totals_by_type.nlargest(10).index
@@ -474,10 +473,15 @@ else:
         totals_by_oem = oem_hist_full.sum(axis=1)
         top10_oems = totals_by_oem.nlargest(10).index
         oem_hist = oem_hist_full.loc[top10_oems]
-        others_sum = oem_hist_full.loc[~oem_hist_full.index.isin(top10_oems)].sum()
-          
+        oem_hist = oem_hist.T
+        oem_hist.index = month_labels
+        fig_oem_hist = px.line(oem_hist, x=oem_hist.index, y=oem_hist.columns, markers=True)
+        fig_oem_hist.update_traces(hovertemplate="%{y:,}")
+        st.plotly_chart(fig_oem_hist, use_container_width=True)
+
+
         # 🌍 2-3 지역별 판매량 추이 (꺾은선)
-        st.subheader("🌍 지역별 판매량 추이")
+        st.subheader("🌍 지역별 판매량 추이 (Top 10 + Others)")
         region_hist_full = filtered_df.groupby("Region")[recent_13_months].sum()
         totals_by_region = region_hist_full.sum(axis=1)
         top10_regions = totals_by_region.nlargest(10).index
@@ -525,7 +529,7 @@ else:
 
             # Gemini 분석을 위한 데이터 범위 재설정 (최근 6개월 + 전년 동월)
             base_month_dt = pd.to_datetime(selected_base_month, format="%b-%y")
-
+            
             # 최근 6개월
             end_idx = sorted_months.index(base_month_dt)
             start_idx_6m = max(0, end_idx - 5)
@@ -534,7 +538,7 @@ else:
             # 전년 동월
             last_year_dt = base_month_dt - pd.DateOffset(years=1)
             last_year_col = month_map.get(last_year_dt)
-
+            
             analysis_columns = []
             analysis_columns.extend([month_map[m] for m in recent_6_months_dt])
             if last_year_col and last_year_col not in analysis_columns:
@@ -560,7 +564,7 @@ else:
                     try:
                         with st.spinner("Gemini AI 분석 중..."):
                             csv_data = analysis_df.to_csv(index=False)
-
+                            
                             gemini_prompt = f"""
     당신은 EV(전기차)/배터리 부문 10년차 Market Intelligence 전문가입니다.
     다음 CSV 데이터는 기준월 {selected_base_month} 포함 최근 6개월 및 전년 동월 판매 데이터입니다.
@@ -575,26 +579,29 @@ else:
     4. 지역별 시장 특성과 성장 요인
     5. 전략적 시사점 및 리스크
     """
-                            response = gemini_client.generate_content(gemini_prompt)
+                            if gemini_prompt.strip():
+                                response = gemini_client.generate_content(gemini_prompt)
 
-                            if response and response.text:
-                                st.subheader("🤖 Gemini AI 분석 결과")
-                                st.markdown(response.text)
-                                st.download_button(
-                                    label="📥 분석 결과 다운로드",
-                                    data=response.text,
-                                    file_name=f"gemini_analysis_{selected_base_month}_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
-                                    mime="text/plain"
-                                )
+                                if response and response.text:
+                                    st.subheader("🤖 Gemini AI 분석 결과")
+                                    st.markdown(response.text)
+                                    st.download_button(
+                                        label="📥 분석 결과 다운로드",
+                                        data=response.text,
+                                        file_name=f"gemini_analysis_{selected_base_month}_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
+                                        mime="text/plain"
+                                    )
+                                else:
+                                    st.error("Gemini AI 응답이 없습니다.")
                             else:
-                                st.error("Gemini AI 응답이 없습니다.")
+                                st.error("Gemini 분석을 위한 프롬프트가 비어있습니다. 검색 조건을 확인해주세요.")
                     except Exception as e:
                         st.error(f"Gemini 분석 오류: {str(e)}")
             else:
                 st.warning("분석할 데이터가 충분하지 않습니다. 검색 조건을 다시 설정해주세요.")
         else:
             st.warning("⚠️ Gemini API가 연결되지 않았습니다. 사이드바에서 API 키를 입력하세요.")
-
+    
     # ========================
     # Tab 4: News Search (제목만 최신순 출력)
     # ========================
@@ -679,5 +686,3 @@ st.markdown("""
     🚗 EV Market Intelligence Dashboard | Powered by Streamlit & Gemini AI
 </div>
 """, unsafe_allow_html=True)
-
-
