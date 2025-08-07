@@ -527,10 +527,12 @@ else:
         if gemini_client and monthly_cols:
             st.info(f"기준월 **{selected_base_month}** 기준 최근 M-13개월 데이터를 Gemini AI가 분석합니다.")
             
-            # M-13개월 전체 기간의 판매량 합계가 0인 행만 제거
+            # M-13개월 판매량 합계가 0인 행도 모두 포함
             analysis_df = filtered_df.copy()
-            if not analysis_df.empty:
-                analysis_df = analysis_df[(analysis_df[recent_13_months].sum(axis=1) > 0)]
+            
+            # 분석에 필요한 컬럼만 선택
+            columns_to_analyze = ['Type_2', 'Region', 'AutoGroup', 'Country', 'Model'] + recent_13_months
+            analysis_df = analysis_df[columns_to_analyze]
             
             if not analysis_df.empty and len(recent_13_months) > 1:
                 st.subheader("📋 분석 데이터 미리보기 (일부)")
@@ -551,7 +553,7 @@ else:
     
     **데이터 설명:**
     - 제공된 CSV 데이터는 {selected_base_month} 기준 최근 13개월간의 상세 판매 데이터입니다.
-    - 이 데이터는 OEM, 모델, 배터리 공급사, xEV 타입, 지역별 월별 판매량 정보가 포함되어 있습니다.
+    - 이 데이터는 OEM(AutoGroup), 모델, xEV 타입(Type_2), 지역, 국가별 월별 판매량 정보가 포함되어 있습니다.
     
     **분석 목표:**
     아래 목차에 따라 구체적인 수치(판매량, 성장률, 점유율 등)를 근거로 심층적인 시장 분석 보고서를 작성하세요.
@@ -563,13 +565,13 @@ else:
     - 판매량 변화의 원인으로 추정되는 요인들을 분석하여 제시하세요.
     
     ### 2. OEM 및 모델 경쟁 분석
-    - OEM별 시장 점유율의 13개월 추이를 분석하고, {selected_base_month} 기준 주요 경쟁사(예: Top 5)의 시장 점유율을 수치(%)로 제시하세요.
+    - OEM(AutoGroup)별 시장 점유율의 13개월 추이를 분석하고, {selected_base_month} 기준 주요 경쟁사(예: Top 5)의 시장 점유율을 수치(%)로 제시하세요.
     - 가장 잘 팔린 상위 5개 모델의 판매량 추이를 분석하고, 이 모델들이 시장에서 성공한 이유를 추정하세요.
     
-    ### 3. 배터리 및 xEV 타입 분석
-    - 배터리 공급사별 시장 점유율 추이를 분석하고, {selected_base_month} 기준 어떤 공급사가 가장 높은 점유율을 차지하고 있는지, 그리고 어떤 공급사가 가장 빠르게 성장하고 있는지 수치를 근거로 설명하세요.
+    ### 3. xEV 타입 및 지역 분석
     - BEV, PHEV, FHEV 등 xEV 타입별 판매량 추이를 비교하고, 각 타입의 특징적인 동향(성장률, 시장 비중 등)을 분석하세요.
-    
+    - 주요 지역(Region) 및 국가(Country)별 판매량 추이를 분석하고, 시장 성장의 기회 요인과 위협 요인을 제시하세요.
+
     ### 4. SK On 시장 경쟁력 확보를 위한 전략적 시사점
     - 위 분석 내용을 바탕으로 SKO가 시장에서 경쟁 우위를 확보하기 위한 핵심 전략적 시사점을 3가지 이상 구체적으로 제언하세요. 각 제언에 대한 근거를 분석 결과에서 찾아 제시하세요.
     
