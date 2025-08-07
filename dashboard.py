@@ -475,7 +475,6 @@ else:
         top10_oems = totals_by_oem.nlargest(10).index
         oem_hist = oem_hist_full.loc[top10_oems]
         others_sum = oem_hist_full.loc[~oem_hist_full.index.isin(top10_oems)].sum()
-        if others_sum.sum() > 0:
           
         # 🌍 2-3 지역별 판매량 추이 (꺾은선)
         st.subheader("🌍 지역별 판매량 추이")
@@ -680,4 +679,5 @@ st.markdown("""
     🚗 EV Market Intelligence Dashboard | Powered by Streamlit & Gemini AI
 </div>
 """, unsafe_allow_html=True)
+
 
