@@ -545,30 +545,29 @@ else:
             if last_year_col and last_year_col not in analysis_columns:
                 analysis_columns.append(last_year_col)
 
-            # EVdashboard 방식: M-13 데이터 추출
-            analysis_df = filtered_df[['AutoGroup', 'Model', 'Battery Supplier', 'Type_2'] + analysis_columns]
-            analysis_df = analysis_df.copy()
+            # 피벗 테이블 생성 및 0값만 있는 행 제거
+            if not filtered_df.empty:
+                analysis_df_pivot = filtered_df.groupby(['AutoGroup', 'Model', 'Battery Supplier', 'Type_2'])[analysis_columns].sum().reset_index()
+                analysis_df_pivot = analysis_df_pivot[(analysis_df_pivot[analysis_columns].sum(axis=1) > 0)]
+            else:
+                analysis_df_pivot = pd.DataFrame()
 
-            # 수치 데이터 정합화 (NaN → 0, 음수 제거)
-            for col in analysis_columns:
-                analysis_df[col] = pd.to_numeric(analysis_df[col], errors='coerce').fillna(0)
-                analysis_df[col] = analysis_df[col].clip(lower=0)
-
-            if not analysis_df.empty and len(analysis_columns) > 1:
-                st.subheader("📋 분석 데이터 미리보기")
-                st.write(f"레코드: **{len(analysis_df)}개**, 기간: **{len(analysis_columns)}개월**")
+            if not analysis_df_pivot.empty and len(analysis_columns) > 1:
+                st.subheader("📋 분석 데이터 미리보기 (피벗테이블)")
+                st.write(f"레코드: **{len(analysis_df_pivot)}개**, 기간: **{len(analysis_columns)}개월**")
                 st.write("분석 기간 열:", ', '.join(analysis_columns))
                 with st.expander("데이터 보기", expanded=False):
-                    st.dataframe(analysis_df.head(10))
+                    st.dataframe(analysis_df_pivot.head(10))
 
                 if st.button("🔍 Gemini AI 분석 실행", type="primary"):
                     try:
                         with st.spinner("Gemini AI 분석 중..."):
-                            csv_data = analysis_df.to_csv(index=False)
+                            csv_data = analysis_df_pivot.to_csv(index=False)
                             
                             gemini_prompt = f"""
     당신은 EV(전기차)/배터리 부문 10년차 Market Intelligence 전문가입니다.
     다음 CSV 데이터는 기준월 {selected_base_month} 포함 최근 6개월 및 전년 동월 판매 데이터입니다.
+    이 데이터는 OEM, 모델, 배터리 공급사, xEV 타입별로 집계된 요약 정보입니다.
 
     CSV 데이터:
     {csv_data}
