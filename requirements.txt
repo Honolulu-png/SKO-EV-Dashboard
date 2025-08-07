@@ -3,4 +3,4 @@ pandas>=2.0.0
 plotly>=5.20.0
 requests>=2.31.0
 python-dateutil>=2.8.2
-google-genai>=0.5.2
+google-generativeai>=0.5.2
