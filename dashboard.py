@@ -546,7 +546,8 @@ else:
                         with st.spinner("Gemini AI 분석 중..."):
                             csv_data = analysis_df.to_csv(index=False)
                             
-                            gemini_prompt = f"""
+                            # 동적 프롬프트 생성
+                            base_prompt = f"""
     당신은 SK On 소속의 EV/배터리 시장 전문 분석가입니다.
     제공된 CSV 데이터를 철저히 분석하여, SK On의 시장 경쟁력 확보를 위한 전략적 시사점을 도출하는 심층 보고서를 작성하세요.
     
@@ -561,36 +562,51 @@ else:
     - **모든 수치는 정확한 판매량, 성장률(%) 등의 정량적 데이터로 제시해야 합니다.**
     - **추상적인 설명 대신, 데이터 기반의 구체적인 인사이트를 제공하세요.**
     - **SK On의 현재 상황과 연관지어 실질적인 제언을 해야 합니다.**
+    """
     
-    ---
+                            dynamic_prompt = ""
+                            if "전체" not in st.session_state["selected_oems"] and len(st.session_state["selected_oems"]) > 0:
+                                oem_list = ", ".join(st.session_state["selected_oems"])
+                                dynamic_prompt += f"\n- **특정 OEM 분석:** 선택된 OEM인 {oem_list}의 13개월 판매량 추이 및 시장 점유율 변화를 집중적으로 분석하고 경쟁사 대비 성과를 평가하세요."
+                            
+                            if "전체" not in st.session_state["selected_regions"] and len(st.session_state["selected_regions"]) > 0:
+                                region_list = ", ".join(st.session_state["selected_regions"])
+                                dynamic_prompt += f"\n- **특정 지역 분석:** 선택된 지역인 {region_list} 시장의 주요 동향과 성장률을 분석하고, 해당 지역의 유망 모델과 OEM을 제시하세요."
+                                
+                            if "전체" not in st.session_state["selected_models"] and len(st.session_state["selected_models"]) > 0:
+                                model_list = ", ".join(st.session_state["selected_models"])
+                                dynamic_prompt += f"\n- **특정 모델 분석:** 선택된 모델인 {model_list}의 판매량 추이를 분석하고, 이 모델의 시장 내 경쟁력을 평가하세요."
+                            
+                            # 만약 필터가 모두 '전체'일 경우, 기본 분석 지시사항 추가
+                            if not dynamic_prompt:
+                                dynamic_prompt = """
+    - **1. 시장 동향 분석:**
+        - 전체 시장 판매량의 13개월 월별 추이를 분석하고, 추세 변화를 설명하세요.
+        - **2025년 6월**의 전월 대비(MoM) 및 전년 동월 대비(YoY) 판매량 성장률을 정확한 숫자(%)로 계산하여 제시하세요.
+    - **2. OEM 및 모델 경쟁 분석:**
+        - **2025년 6월** 기준, **시장 점유율 상위 5개 OEM(AutoGroup)**을 선정하고, 각 OEM의 **정확한 시장 점유율(%)**을 제시하세요.
+        - 가장 잘 팔린 **상위 5개 모델**을 선정하고, 각 모델의 성공 요인을 분석하세요.
+    - **3. xEV 타입 및 지역 분석:**
+        - BEV, PHEV, FHEV 등 **xEV 타입별** 판매량 추이를 비교하고, **각 타입의 시장 비중과 성장률(%)**을 수치로 분석하세요.
+        - 주요 **지역(Region) 및 국가(Country)**별 판매량 추이를 분석하고, 가장 큰 성장세를 보이는 유망 시장을 수치를 근거로 제시하세요.
+    """
+
+                            final_prompt = f"""
+    {base_prompt}
     
-    ### 1. 시장 동향 분석
-    - 전체 시장의 13개월간 판매량 추이를 수치로 설명하세요. (예: 2024년 6월 10만대에서 2025년 5월 15만대로 증가 후, 2025년 6월 14만대로 감소)
-    - **2025년 6월**의 전월 대비(MoM) 및 전년 동월 대비(YoY) **판매량 성장률을 정확한 숫자(%)**로 계산하여 제시하세요.
-    - 판매량 변화의 원인을 데이터 분석 기반으로 추정하여 설명하세요.
-    
-    ### 2. OEM 및 모델 경쟁 분석
-    - **2025년 6월** 기준, **시장 점유율 상위 5개 OEM(AutoGroup)**을 선정하고, 각 OEM의 **정확한 시장 점유율(%)**을 제시하세요.
-    - 13개월간의 판매량 데이터를 분석하여, 가장 잘 팔린 **상위 5개 모델**을 선정하고, 각 모델의 성공 요인을 분석하세요.
-    
-    ### 3. xEV 타입 및 지역 분석
-    - BEV, PHEV, FHEV 등 **xEV 타입별** 판매량 추이를 비교하고, **각 타입의 시장 비중과 성장률(%)**을 수치로 분석하세요.
-    - 주요 **지역(Region) 및 국가(Country)**별 판매량 추이를 분석하고, 가장 큰 성장세를 보이는 유망 시장을 수치를 근거로 제시하세요.
-    
-    ### 4. SK On 시장 경쟁력 확보를 위한 전략적 시사점 (최소 3가지)
-    - 위에서 분석한 **정량적 데이터(수치)**를 근거로 SK On이 취해야 할 구체적인 전략 시사점을 3가지 이상 제언하세요.
-    - 예시:
-        - `[특정 OEM/모델]에 대한 집중 공략`: `[OEM 이름]`의 시장 점유율과 `[모델 이름]`의 성장률을 근거로, 해당 OEM과의 파트너십을 강화해야 함을 제언.
-        - `[고성장 시장]에 대한 투자 확대`: `[지역/국가 이름]`의 높은 시장 성장률을 근거로, 해당 시장에 대한 영업 및 생산 인프라를 확대해야 함을 제언.
-        - `[유망 xEV 타입] 배터리 기술 집중`: `[xEV 타입 이름]`의 시장 성장률과 시장 비중을 근거로, 해당 타입에 최적화된 배터리 기술 개발에 집중해야 함을 제언.
+    ### 상세 분석 지시
+    {dynamic_prompt}
+
+    ### 4. SK On 시장 경쟁력 확보를 위한 전략적 시사점
+    - 위 분석 내용을 바탕으로 SK On이 취해야 할 구체적인 전략 시사점 3가지 이상을 제언하세요.
     
     ---
     
     **CSV 데이터:**
     {csv_data}
     """
-                            if gemini_prompt.strip():
-                                response = gemini_client.generate_content(gemini_prompt)
+                            if final_prompt.strip():
+                                response = gemini_client.generate_content(final_prompt)
 
                                 if response and response.text:
                                     st.subheader("🤖 Gemini AI 분석 결과")
