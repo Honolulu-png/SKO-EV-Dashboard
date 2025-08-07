@@ -95,7 +95,8 @@ gemini_client = None
 if gemini_api_key and GEMINI_AVAILABLE:
     try:
         genai.configure(api_key=gemini_api_key)
-        gemini_client = genai.GenerativeModel("gemini-pro")
+        # gemini-pro 모델을 gemini-1.5-flash로 변경
+        gemini_client = genai.GenerativeModel("gemini-1.5-flash")
         st.sidebar.success("✅ Gemini API 연결 성공")
     except Exception as e:
         st.sidebar.error(f"❌ Gemini API 연결 실패: {str(e)}")
@@ -453,7 +454,7 @@ else:
         month_labels = create_month_labels(recent_13_months)
 
         # 🚗 2-1 xEV 판매량 추이 (누적막대)
-        st.subheader("🚗 xEV 판매량 추이")
+        st.subheader("🚗 xEV 판매량 추이 (Top 10 + Others)")
         xev_type_hist_full = filtered_df.groupby("Type_2")[recent_13_months].sum()
         totals_by_type = xev_type_hist_full.sum(axis=1)
         top10_types = totals_by_type.nlargest(10).index
@@ -481,7 +482,7 @@ else:
 
 
         # 🌍 2-3 지역별 판매량 추이 (꺾은선)
-        st.subheader("🌍 지역별 판매량 추이")
+        st.subheader("🌍 지역별 판매량 추이 (Top 10 + Others)")
         region_hist_full = filtered_df.groupby("Region")[recent_13_months].sum()
         totals_by_region = region_hist_full.sum(axis=1)
         top10_regions = totals_by_region.nlargest(10).index
@@ -686,4 +687,3 @@ st.markdown("""
     🚗 EV Market Intelligence Dashboard | Powered by Streamlit & Gemini AI
 </div>
 """, unsafe_allow_html=True)
-
