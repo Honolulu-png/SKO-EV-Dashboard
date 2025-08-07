@@ -453,7 +453,7 @@ else:
         month_labels = create_month_labels(recent_13_months)
 
         # 🚗 2-1 xEV 판매량 추이 (누적막대)
-        st.subheader("🚗 xEV 판매량 추이 (Top 10 + Others)")
+        st.subheader("🚗 xEV 판매량 추이")
         xev_type_hist_full = filtered_df.groupby("Type_2")[recent_13_months].sum()
         totals_by_type = xev_type_hist_full.sum(axis=1)
         top10_types = totals_by_type.nlargest(10).index
@@ -481,7 +481,7 @@ else:
 
 
         # 🌍 2-3 지역별 판매량 추이 (꺾은선)
-        st.subheader("🌍 지역별 판매량 추이 (Top 10 + Others)")
+        st.subheader("🌍 지역별 판매량 추이")
         region_hist_full = filtered_df.groupby("Region")[recent_13_months].sum()
         totals_by_region = region_hist_full.sum(axis=1)
         top10_regions = totals_by_region.nlargest(10).index
@@ -686,3 +686,4 @@ st.markdown("""
     🚗 EV Market Intelligence Dashboard | Powered by Streamlit & Gemini AI
 </div>
 """, unsafe_allow_html=True)
+
